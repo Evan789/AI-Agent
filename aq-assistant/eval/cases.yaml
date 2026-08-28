@@ -1,0 +1,41 @@
+# Stage 2 eval cases (Path B). run_analysis cases are dry-run (no subprocess).
+
+backend: rules
+max_steps: 8
+
+cases:
+  - id: list_analyzers
+    goal: 有哪些分析器
+    expect:
+      status: completed
+      tools: [list_analyzers]
+      message_contains: seesaw_effect
+
+  - id: missing_slots
+    goal: 帮我诊断这次污染过程
+    expect:
+      status: completed
+      tools: [ask_user]
+
+  - id: full_suite
+    goal: 分析南昌 2026-03-10 到 2026-03-20 的污染过程
+    dry_run: true
+    expect:
+      status: completed
+      tools: [run_analysis]
+      analyzers: all
+
+  - id: seesaw_only
+    goal: 分析南昌 2026-03-10 到 2026-03-20 的跷跷板
+    dry_run: true
+    expect:
+      status: completed
+      tools: [run_analysis]
+      analyzers: [seesaw_effect]
+
+  - id: budget
+    goal: 有哪些分析器
+    max_steps: 1
+    expect:
+      status: failed
+      fail_reason: budget

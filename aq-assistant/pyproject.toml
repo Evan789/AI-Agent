@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aq-assistant"
+version = "0.1.0"
+description = "Air-quality diagnosis agent (Path B): tools wrap existing analyzers; DeepSeek via VPN."
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+web = ["fastapi>=0.115", "uvicorn>=0.30"]
+
+[project.scripts]
+aqagent = "aqagent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+aqagent = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "../proto/src"]
+markers = [
+    "live: needs VPN + DeepSeek gateway",
+]
