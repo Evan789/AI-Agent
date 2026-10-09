@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>YXBot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,640&family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #10120f;
+      --bg-2: #1a1e18;
+      --ink: #efe7d6;
+      --muted: #a39886;
+      --line: rgba(239, 231, 214, 0.16);
+      --paper: #f6f1e6;
+      --paper-ink: #1c1914;
+      --copper: #e08a45;
+      --moss: #b7c98a;
+      --danger: #d4533a;
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Noto Serif SC", "Songti SC", "PMingLiU", "Palatino Linotype", serif;
+      background:
+        radial-gradient(900px 480px at 8% -10%, rgba(224, 138, 69, 0.18), transparent 55%),
+        radial-gradient(700px 500px at 100% 0%, rgba(183, 201, 138, 0.12), transparent 50%),
+        var(--bg);
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(239, 231, 214, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(239, 231, 214, 0.035) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: linear-gradient(to bottom, #000 0%, transparent 78%);
+    }
+    button, input, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    button:disabled { opacity: 0.45; cursor: default; }
+    .app {
+      position: relative;
+      min-height: 100%;
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr) 340px;
+      gap: 18px;
+      padding: 22px;
+    }
+    .rail, .console, .stage {
+      animation: rise 0.7s ease both;
+    }
+    .stage { animation-delay: 0.08s; }
+    .console { animation-delay: 0.16s; }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: none; }
+    }
+    .rail, .console {
+      border: 1px solid var(--line);
+      background: rgba(20, 23, 18, 0.78);
+      backdrop-filter: blur(8px);
+      border-radius: 22px;
+      padding: 22px 18px;
+    }
+    .mark {
+      margin: 0;
+      font-family: Fraunces, "Iowan Old Style", "Palatino Linotype", serif;
+      font-size: 42px;
+      font-weight: 560;
+      letter-spacing: -0.04em;
+      line-height: 0.9;
+    }
+    .lead { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+    .clock {
+      display: block;
+      margin: 18px 0 22px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.14em;
+      color: var(--copper);
+      font-size: 13px;
+    }
+    label { display: grid; gap: 8px; font-size: 12px; letter-spacing: 0.12em; color: var(--muted); }
+    input[type="text"], input[type="password"], textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.22);
+      border-radius: 12px;
+      padding: 11px 12px;
+      outline: none;
+    }
+    #workspace { font-size: 13px; }
+    input:focus, textarea:focus { border-color: rgba(224, 138, 69, 0.8); }
+    .stack { display: grid; gap: 10px; margin-top: 14px; }
+    button.solid, button.ghost, button.danger {
+      border-radius: 999px;
+      padding: 10px 16px;
+      white-space: nowrap;
+    }
+    button.solid { background: var(--copper); color: #24150c; border: 0; font-weight: 600; }
+    button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+    button.danger { background: var(--danger); color: #fff8f4; border: 0; }
+    .stage {
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - 44px);
+      background: var(--paper);
+      color: var(--paper-ink);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    #log {
+      flex: 1;
+      overflow: auto;
+      padding: 28px 28px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .bubble { white-space: pre-wrap; line-height: 1.65; max-width: 78%; }
+    .bubble.user {
+      align-self: flex-end;
+      background: #1c1914;
+      color: var(--paper);
+      border-radius: 18px 18px 4px 18px;
+      padding: 12px 14px;
+    }
+    .bubble.assistant { align-self: flex-start; font-size: 17px; }
+    .bubble.tool {
+      align-self: stretch;
+      max-width: none;
+      color: #6d655b;
+      font-size: 13px;
+      border-left: 2px solid rgba(224, 138, 69, 0.7);
+      padding-left: 10px;
+    }
+    .empty { color: #8a8174; font-size: 15px; }
+    .bubble.enter { animation: in 0.35s ease both; }
+    @keyframes in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+    #pending {
+      margin: 0 22px;
+      padding: 14px;
+      border-radius: 16px;
+      background: #fff7ee;
+      border: 1px solid rgba(224, 138, 69, 0.45);
+      display: grid;
+      gap: 10px;
+    }
+    #pending[hidden] { display: none; }
+    #pending-text { margin: 0; white-space: pre-wrap; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    #composer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      padding: 16px 18px 18px;
+    }
+    #message {
+      min-height: 74px;
+      resize: vertical;
+      background: #fff;
+      color: var(--paper-ink);
+      border-color: rgba(28, 25, 20, 0.12);
+    }
+    .console { display: flex; flex-direction: column; min-height: calc(100vh - 44px); }
+    .console h2 {
+      margin: 0 0 12px;
+      font-size: 13px;
+      letter-spacing: 0.18em;
+      font-weight: 600;
+      color: var(--moss);
+    }
+    #terminal {
+      flex: 1;
+      margin: 0;
+      overflow: auto;
+      border-radius: 16px;
+      padding: 14px;
+      background: #070806;
+      color: #d7e7c4;
+      font-family: "Cascadia Code", "Cascadia Mono", Consolas, monospace;
+      font-size: 12.5px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+    details { margin-top: 8px; }
+    details summary { cursor: pointer; color: var(--muted); letter-spacing: 0.08em; font-size: 13px; }
+    .fields { display: grid; gap: 8px; margin-top: 12px; }
+    .error, .notice { min-height: 1.2em; margin: 8px 0 0; font-size: 13px; }
+    .error { color: #ffb1a3; }
+    .notice { color: var(--moss); }
+    body.busy .stage { cursor: progress; }
+    body.busy #send { position: relative; color: transparent; }
+    body.busy #send::after {
+      content: "···";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: #24150c;
+      letter-spacing: 0.2em;
+    }
+    @media (max-width: 1100px) {
+      .app { grid-template-columns: 1fr; }
+      .stage, .console { min-height: auto; }
+      #log { min-height: 360px; }
+      #terminal { min-height: 180px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <h1 class="mark">YXBot</h1>
+      <p class="lead">本地对话。写入和命令会先停下来等你点允许。</p>
+      <time class="clock" id="clock"></time>
+      <label>工作目录
+        <input id="workspace" type="text" placeholder="工作目录" />
+      </label>
+      <div class="stack">
+        <button class="solid" id="use-dir" type="button">使用此目录</button>
+        <button class="ghost" id="reset" type="button">清空对话</button>
+      </div>
+      <details>
+        <summary>DeepSeek 连接</summary>
+        <div class="fields">
+          <input id="api-url" type="text" placeholder="接口地址" />
+          <input id="model-id" type="text" placeholder="模型名" />
+          <input id="host-ip" type="text" placeholder="Host 对应的 IP，可留空" />
+          <input id="api-key" type="password" placeholder="Key，留空表示不修改" />
+          <div class="row">
+            <button class="solid" id="save-settings" type="button">保存</button>
+            <button class="ghost" id="test-settings" type="button">测试连通</button>
+          </div>
+          <span id="key-flag"></span>
+        </div>
+      </details>
+      <p class="error" id="error"></p>
+      <p class="notice" id="notice"></p>
+    </aside>
+    <main class="stage">
+      <div id="log"></div>
+      <div id="pending" hidden>
+        <p id="pending-text"></p>
+        <div class="row">
+          <button class="danger" id="allow" type="button">允许</button>
+          <button class="ghost" id="deny" type="button">拒绝</button>
+        </div>
+      </div>
+      <form id="composer">
+        <textarea id="message" rows="3" placeholder="说你要做的事"></textarea>
+        <button class="solid" id="send" type="submit">发送</button>
+      </form>
+    </main>
+    <section class="console">
+      <h2>终端</h2>
+      <pre id="terminal">（还没有命令或文件操作）</pre>
+    </section>
+  </div>
+  <script>
+    const errorBox = document.querySelector("#error");
+    const noticeBox = document.querySelector("#notice");
+    const log = document.querySelector("#log");
+    const terminal = document.querySelector("#terminal");
+    const pending = document.querySelector("#pending");
+    const pendingText = document.querySelector("#pending-text");
+    const messageBox = document.querySelector("#message");
+
+    function showError(text) {
+      errorBox.textContent = text || "";
+      if (text) noticeBox.textContent = "";
+    }
+    function showNotice(text) {
+      noticeBox.textContent = text || "";
+      if (text) errorBox.textContent = "";
+    }
+
+    function render(state) {
+      document.querySelector("#workspace").value = state.workspace || "";
+      log.replaceChildren();
+      const items = state.transcript || [];
+      if (!items.length) {
+        const hint = document.createElement("div");
+        hint.className = "empty";
+        hint.textContent = "对话会写在这里。";
+        log.appendChild(hint);
+      }
+      items.forEach((item, index) => {
+        const div = document.createElement("div");
+        div.className = "bubble " + (item.who || "assistant");
+        if (index === items.length - 1) div.classList.add("enter");
+        div.textContent = item.text || "";
+        log.appendChild(div);
+      });
+      log.scrollTop = log.scrollHeight;
+      const lines = state.terminal || [];
+      terminal.textContent = lines.length ? lines.join("\n") : "（还没有命令或文件操作）";
+      if (state.pending) {
+        pending.hidden = false;
+        pendingText.textContent = state.pending.text || "";
+      } else {
+        pending.hidden = true;
+      }
+    }
+
+    async function call(url, options, busy) {
+      showError("");
+      if (busy) document.body.classList.add("busy");
+      try {
+        const response = await fetch(url, options);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const detail = data.detail;
+          showError(typeof detail === "string" ? detail : "请求失败");
+          return null;
+        }
+        return data;
+      } finally {
+        if (busy) document.body.classList.remove("busy");
+      }
+    }
+
+    async function refresh() {
+      const state = await call("/api/state");
+      if (state) render(state);
+    }
+
+    function tick() {
+      document.querySelector("#clock").textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+    }
+    tick();
+    setInterval(tick, 1000);
+
+    messageBox.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        document.querySelector("#composer").requestSubmit();
+      }
+    });
+
+    document.querySelector("#composer").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const message = messageBox.value.trim();
+      if (!message || document.body.classList.contains("busy")) return;
+      messageBox.value = "";
+      const state = await call("/api/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({message})
+      }, true);
+      if (state) render(state);
+    });
+
+    document.querySelector("#allow").addEventListener("click", async () => {
+      const state = await call("/api/confirm", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({allow: true})
+      }, true);
+      if (state) render(state);
+    });
+    document.querySelector("#deny").addEventListener("click", async () => {
+      const state = await call("/api/confirm", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({allow: false})
+      }, true);
+      if (state) render(state);
+    });
+    document.querySelector("#use-dir").addEventListener("click", async () => {
+      const state = await call("/api/workspace", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({path: document.querySelector("#workspace").value})
+      }, true);
+      if (state) {
+        render(state);
+        showNotice("已换到这个目录");
+      }
+    });
+    document.querySelector("#reset").addEventListener("click", async () => {
+      const state = await call("/api/reset", {method: "POST"}, true);
+      if (state) render(state);
+    });
+    document.querySelector("#save-settings").addEventListener("click", async () => {
+      const data = await call("/api/settings", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          api_url: document.querySelector("#api-url").value,
+          model_id: document.querySelector("#model-id").value,
+          host_ip: document.querySelector("#host-ip").value,
+          api_key: document.querySelector("#api-key").value
+        })
+      }, true);
+      if (data) {
+        document.querySelector("#api-key").value = "";
+        document.querySelector("#key-flag").textContent = data.key_set ? "Key 已保存" : "还没有 Key";
+        showNotice(data.key_set ? "连接设置已保存" : "还没有 Key");
+      }
+    });
+    document.querySelector("#test-settings").addEventListener("click", async () => {
+      const data = await call("/api/test", {method: "POST"}, true);
+      if (data) showNotice("连通正常：" + (data.reply || "ok"));
+    });
+
+    call("/api/settings").then((data) => {
+      if (!data) return;
+      document.querySelector("#api-url").value = data.api_url || "";
+      document.querySelector("#model-id").value = data.model_id || "";
+      document.querySelector("#host-ip").value = data.host_ip || "";
+      document.querySelector("#key-flag").textContent = data.key_set ? "Key 已配置" : "还没有 Key";
+    });
+    refresh();
+  </script>
+</body>
+</html>

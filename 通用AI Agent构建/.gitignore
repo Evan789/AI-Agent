@@ -1,0 +1,6 @@
+.venv/
+yxbot.local.json
+workspace/
+__pycache__/
+*.pyc
+.pytest_cache/

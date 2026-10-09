@@ -8,4 +8,4 @@ DeepSeek 网关配置在本目录 `.env`；连通性脚本：`test_deepseek_api.
 
 从这里开始：[aq-assistant/README.md](aq-assistant/README.md)
 
-通用 Agent（自己的界面终端、大陆厂商 API、介绍页下载、账号、自动更新）的构建说明在 [通用AI Agent构建/README.md](通用AI%20Agent构建/README.md)。尚未写代码。
+通用 Agent 的本地初始版和后续计划在 [通用AI Agent构建/README.md](通用AI%20Agent构建/README.md)。介绍页、账号、自动更新先不做。
