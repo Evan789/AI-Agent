@@ -22,6 +22,12 @@ from aqagent.config import Settings
 from aqagent.constants import ANALYZERS, POLICY
 from aqagent.tools.schema import STAGE_TOOL_NAMES, TOOL_SCHEMAS
 
+CHAT_SYSTEM = (
+    "你是大气环境诊断助手的答疑口，不是分析器调度员。"
+    "只根据用户消息里的上次分析JSON回答。没有JSON或 episode 为 null 时，说明还没做分析，并提示可以说「分析某城市 日期 的跷跷板」。"
+    "不要编造JSON没有的数字或物种。不要调用或假装已运行分析器。200字以内，中文。"
+)
+
 SUMMARIZE_SYSTEM = (
     "你是大气环境分析记录员，不是发挥常识的顾问。"
     "只复述用户消息里工具JSON已写明的内容。400字以内，中文，不要输出JSON。"
@@ -194,6 +200,18 @@ class DeepSeekGateway:
         return self.complete(
             [
                 {"role": "system", "content": SUMMARIZE_SYSTEM},
+                {"role": "user", "content": user},
+            ]
+        )
+
+    def chat_about(self, goal: str, evidence: dict) -> str:
+        raw = json.dumps(evidence, ensure_ascii=False, default=str)
+        if len(raw) > 3500:
+            raw = raw[:3500] + "…"
+        user = f"用户问：{goal}\n上次分析JSON：{raw}"
+        return self.complete(
+            [
+                {"role": "system", "content": CHAT_SYSTEM},
                 {"role": "user", "content": user},
             ]
         )

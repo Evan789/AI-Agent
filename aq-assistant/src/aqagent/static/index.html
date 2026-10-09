@@ -49,6 +49,7 @@
   .user { align-self: flex-end; background: var(--user); color: #f4fbff; }
   .bot { align-self: flex-start; background: var(--card); border: 1px solid var(--line); }
   .meta { align-self: flex-start; font-size: 11px; color: var(--mute); margin-top: -6px; }
+  .fig { max-width: 92%; align-self: flex-start; border-radius: 10px; border: 1px solid var(--line); background: #fff; }
   form {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -93,11 +94,11 @@
 <div class="shell">
   <header>
     <h1>大气环境诊断助手</h1>
-    <p>与命令行共用会话。下拉可指定分析器，留空则按问题自动选；勾选后由 DeepSeek 写摘要（需 VPN）。</p>
+    <p>与命令行共用会话。下拉可指定分析器；「画趋势图」会展示分析器已生成的图。勾选后分析用 DeepSeek 摘要，闲聊用 DeepSeek 答疑（需 VPN）。</p>
   </header>
   <div id="log"></div>
   <form id="f">
-    <textarea id="q" placeholder="分析南昌 2026-03-10 到 2026-03-20 的跷跷板" required></textarea>
+    <textarea id="q" placeholder="分析南昌 2026-03-10 到 2026-03-20 的跷跷板；或：画一个图展示北京 2026-08-01 到 2026-08-28 的变化趋势" required></textarea>
     <select id="skill" aria-label="分析器">
       <option value="">按问题自动选择</option>
       <option value="all">全部 11 项</option>
@@ -148,6 +149,14 @@ form.addEventListener("submit", async (e) => {
     });
     const data = await res.json();
     wait.textContent = data.message || JSON.stringify(data, null, 2);
+    (data.figures || []).forEach((fig) => {
+      if (!fig || !fig.job_id || !fig.name) return;
+      const img = document.createElement("img");
+      img.className = "fig";
+      img.alt = fig.name;
+      img.src = "/api/jobs/" + encodeURIComponent(fig.job_id) + "/figures/" + encodeURIComponent(fig.name);
+      log.appendChild(img);
+    });
     const bits = [];
     if (data.summary_source) bits.push("摘要:" + data.summary_source);
     if (data.ran_now && data.ran_now.length) bits.push("新跑:" + data.ran_now.join(","));

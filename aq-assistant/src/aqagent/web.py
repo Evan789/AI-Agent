@@ -5,14 +5,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from aqagent.config import Settings
 from aqagent.constants import ANALYZERS
 from aqagent.health import health_payload
 from aqagent.planner.slots import parse_skill_flag
 from aqagent.runtime import ask_result, run_aq
+from aqagent.tools.run_analysis import resolve_figure
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -23,7 +25,9 @@ class AskBody(BaseModel):
     skill: str | None = None
 
 
-def create_app(*, ask_fn: Callable[..., dict] | None = None) -> FastAPI:
+def create_app(*, ask_fn: Callable[..., dict] | None = None, settings: Settings | None = None) -> FastAPI:
+    cfg = settings or Settings()
+
     def _ask(goal: str, llm: bool, analyzers: list[str] | None) -> dict:
         if ask_fn is not None:
             return ask_fn(goal, llm, analyzers)
@@ -43,6 +47,13 @@ def create_app(*, ask_fn: Callable[..., dict] | None = None) -> FastAPI:
     @app.post("/api/ask")
     def ask(body: AskBody):
         return _ask(body.goal.strip(), body.llm, parse_skill_flag(body.skill))
+
+    @app.get("/api/jobs/{job_id}/figures/{name}")
+    def figure(job_id: str, name: str):
+        path = resolve_figure(cfg.work_dir, job_id, name)
+        if path is None:
+            raise HTTPException(status_code=404, detail="找不到该图表")
+        return FileResponse(path, media_type="image/png")
 
     @app.get("/")
     def index():

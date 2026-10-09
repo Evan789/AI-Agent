@@ -93,3 +93,21 @@ def test_ask_result_shape_for_list():
     assert "seesaw_effect" in out["message"]
     assert out["summary_source"] == "rules"
     assert out["analyzers_run"] is None
+    assert out["figures"] == []
+
+
+def test_chat_uses_chatter_not_tools():
+    from aqagent.runtime import ask_result
+
+    run = run_aq(
+        "这个结论靠谱吗",
+        llm_summarize=True,
+        chatter=lambda goal, ev: "还没有分析可依据。",
+        summarizer=lambda goal, payload: "should not summarize",
+    )
+    assert run.status == RunStatus.completed
+    names = [e.payload.get("name") for e in run.events if e.type == EventType.tool_call]
+    assert names == []
+    out = ask_result(run)
+    assert out["message"] == "还没有分析可依据。"
+    assert out["summary_source"] == "deepseek"

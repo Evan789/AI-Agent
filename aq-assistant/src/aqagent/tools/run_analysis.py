@@ -71,6 +71,37 @@ def _slim(result: dict) -> dict:
     return out
 
 
+def collect_figures(dirs) -> list[dict[str, str]]:
+    items: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for raw in dirs or []:
+        if not raw:
+            continue
+        d = Path(raw)
+        results = d / "results" if (d / "results").is_dir() else d
+        if not results.is_dir():
+            continue
+        job_id = d.name
+        for f in sorted(results.glob("*.png")):
+            if f.name in seen:
+                continue
+            seen.add(f.name)
+            items.append({"job_id": job_id, "name": f.name})
+    return items
+
+
+def resolve_figure(work_dir: Path, job_id: str, name: str) -> Path | None:
+    if "/" in job_id or "\\" in job_id or ".." in job_id:
+        return None
+    if "/" in name or "\\" in name or not name.lower().endswith(".png"):
+        return None
+    base = (Path(work_dir) / "jobs" / job_id / "results").resolve()
+    path = (base / name).resolve()
+    if path.parent != base or not path.is_file():
+        return None
+    return path
+
+
 class RunAnalysisTool:
     name = "run_analysis"
 
@@ -105,8 +136,9 @@ class RunAnalysisTool:
             elif not data:
                 return {"ok": False, "error": f"未识别城市「{city}」的经纬度，请上传数据或改用已知城市。"}
         cached, missing = load_cached(ids, args.get("reuse_dirs"))
+        extra_dirs = list(args.get("reuse_dirs") or [])
         if args.get("reuse_dirs") and not missing:
-            return cached_only_result(ids, cached, args.get("reuse_dirs"))
+            return cached_only_result(ids, cached, extra_dirs)
         run_ids = missing if args.get("reuse_dirs") else ids
         if self._runner is not None:
             out = self._runner(
@@ -119,9 +151,9 @@ class RunAnalysisTool:
                 lon=lon,
                 args=args,
             )
-            return _merge_cached(out, ids, cached, run_ids)
+            return _attach_figures(_merge_cached(out, ids, cached, run_ids), extra_dirs)
         exec_out = self._execute(run_ids, city=city, start=start, end=end, data=data, lat=lat, lon=lon, args=args)
-        return _merge_cached(exec_out, ids, cached, run_ids)
+        return _attach_figures(_merge_cached(exec_out, ids, cached, run_ids), extra_dirs)
 
     def _execute(
         self,
@@ -251,10 +283,22 @@ def cached_only_result(ids: list[str], cached: dict[str, Any], reuse_dirs) -> di
         "warnings": provenance.get("warnings") or [],
         "summaries": cached,
         "result_files": [f"{k}.json" for k in cached],
-        "figures": [],
+        "figures": collect_figures(reuse_dirs),
         "report_excerpt": "",
         "log_tail": "",
     }
+
+
+def _attach_figures(out: dict[str, Any], extra_dirs) -> dict[str, Any]:
+    if not out.get("ok"):
+        return out
+    dirs = []
+    if out.get("output_dir"):
+        dirs.append(out["output_dir"])
+    dirs.extend(extra_dirs or [])
+    merged = dict(out)
+    merged["figures"] = collect_figures(dirs)
+    return merged
 
 
 def _merge_cached(out: dict[str, Any], requested: list[str], cached: dict[str, Any], ran_now: list[str]) -> dict[str, Any]:
@@ -288,7 +332,6 @@ def _collect_outputs(out_dir: Path, ids: list[str], job_id: str, skill_arg: str,
     results_dir = out_dir / "results"
     slim: dict[str, Any] = {}
     result_files: list[str] = []
-    figures: list[str] = []
     if results_dir.exists():
         for f in sorted(results_dir.iterdir()):
             if f.suffix.lower() == ".json":
@@ -298,8 +341,6 @@ def _collect_outputs(out_dir: Path, ids: list[str], job_id: str, skill_arg: str,
                     slim[f.stem] = _slim(payload) if isinstance(payload, dict) else {}
                 except json.JSONDecodeError:
                     slim[f.stem] = {"error": "json_parse_failed"}
-            elif f.suffix.lower() == ".png":
-                figures.append(f.name)
     src = (provenance or {}).get("primary_source")
     return {
         "ok": True,
@@ -314,7 +355,7 @@ def _collect_outputs(out_dir: Path, ids: list[str], job_id: str, skill_arg: str,
         "warnings": (provenance or {}).get("warnings") or [],
         "summaries": slim,
         "result_files": result_files,
-        "figures": figures,
+        "figures": collect_figures([out_dir]),
         "report_excerpt": report[:2500],
         "log_tail": log[-800:],
     }

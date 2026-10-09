@@ -55,3 +55,17 @@ def test_followup_flag():
     assert s["followup"] is True
     assert s["analyzers"] == ["transport_capacity"]
     assert s["city"] is None
+
+
+def test_plot_intent_beijing_trend():
+    s = parse_slots("给我画一个图，展示北京2026-08-01至2026-08-28的空气质量变化趋势")
+    assert s["intent"] == "plot"
+    assert s["city"] == "北京"
+    assert s["start"] == "2026-08-01"
+    assert s["end"] == "2026-08-28"
+
+
+def test_analyze_plus_plot_stays_analyze():
+    s = parse_slots("分析南昌 2026-03-10 到 2026-03-20 的跷跷板并画图")
+    assert s["intent"] == "analyze"
+    assert s["analyzers"] == ["seesaw_effect"]

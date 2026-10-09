@@ -2,6 +2,7 @@
 .env.*
 !.env.example
 config.local.json
+bootstrap-users.local
 __pycache__/
 .venv/
 venv/

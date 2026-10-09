@@ -10,15 +10,30 @@ from agentos.gateway.base import Decision, DecisionKind, GenerateResponse
 from aqagent.constants import ANALYZER_IDS
 from aqagent.planner.slots import is_subset_pick, parse_slots
 from aqagent.session import Episode
+from aqagent.tools.run_analysis import collect_figures
 
 
 _MISSING_Q = "请补充城市（或上传监测文件）以及分析起止日期（YYYY-MM-DD）。离线模式必须先上传文件。"
 
 
 def apply_episode(slots: dict, ep: Episode | None) -> dict:
-    if ep is None or slots.get("city"):
+    if ep is None:
         return slots
-    if slots.get("intent") != "analyze":
+    intent = slots.get("intent")
+    if intent == "plot":
+        if slots.get("city") and slots.get("city") != ep.city:
+            return slots
+        out = dict(slots)
+        out["city"] = out.get("city") or ep.city
+        out["start"] = out.get("start") or ep.start
+        out["end"] = out.get("end") or ep.end
+        out["reused_episode"] = True
+        out["reuse_dirs"] = ep.output_dirs()
+        out["known_analyzers"] = list(ep.analyzers_run)
+        return out
+    if slots.get("city"):
+        return slots
+    if intent != "analyze":
         return slots
     reuse = is_subset_pick(slots.get("analyzers") or []) or bool(slots.get("followup"))
     if not reuse:
@@ -75,6 +90,11 @@ class AqRulesGateway:
         picked = self.slots.get("analyzers") or []
         if picked:
             return picked
+        if self.slots.get("intent") == "plot":
+            dirs = self.slots.get("reuse_dirs") or []
+            if dirs and collect_figures(dirs):
+                return []
+            return ["situation_assessment"]
         if self.slots.get("reused_episode"):
             return []
         return list(ANALYZER_IDS)
@@ -95,7 +115,7 @@ class AqRulesGateway:
             msg = "当前可用分析器：\n" + "\n".join(lines) if lines else "未取得分析器清单。"
             return Decision(kind=DecisionKind.final, thought="list done", message=msg)
 
-        if intent == "analyze":
+        if intent in ("analyze", "plot"):
             if not self.slots["city"] and not self.slots.get("session_file"):
                 if not self._acted:
                     self._acted = True
@@ -175,4 +195,8 @@ class AqRulesGateway:
             lines.append(f"- {aid}: {json.dumps(body, ensure_ascii=False)[:400]}")
         if last.get("output_dir"):
             lines.append(f"产物目录：{last['output_dir']}")
+        figs = last.get("figures") or []
+        if figs:
+            names = [f.get("name") if isinstance(f, dict) else str(f) for f in figs]
+            lines.append(f"图表：{len(figs)} 张（{', '.join(names[:6])}）")
         return "\n".join(lines)

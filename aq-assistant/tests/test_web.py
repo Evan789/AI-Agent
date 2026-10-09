@@ -33,6 +33,28 @@ def test_ask_endpoint_uses_injected_fn():
     assert 'id="skill"' in home.text
 
 
+def test_figure_route_serves_png(tmp_path):
+    from aqagent.config import Settings
+
+    class _Cfg(Settings):
+        def __init__(self):
+            super().__init__()
+            self.work_dir = tmp_path
+
+    results = tmp_path / "jobs" / "job1" / "results"
+    results.mkdir(parents=True)
+    png = b"\x89PNG\r\n\x1a\n"
+    (results / "a.png").write_bytes(png)
+    client = TestClient(create_app(ask_fn=lambda g, l, a: {}, settings=_Cfg()))
+    res = client.get("/api/jobs/job1/figures/a.png")
+    assert res.status_code == 200
+    assert res.content.startswith(b"\x89PNG")
+    missing = client.get("/api/jobs/job1/figures/nope.png")
+    assert missing.status_code == 404
+    traversal = client.get("/api/jobs/../figures/a.png")
+    assert traversal.status_code == 404
+
+
 def test_ask_skill_override_and_catalog():
     seen = {}
 

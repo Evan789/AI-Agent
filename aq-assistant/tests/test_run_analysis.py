@@ -70,3 +70,18 @@ def test_slim_keeps_transport_without_daily_series():
     assert slim["cpf"]["dominant_directions"][0]["dir"] == "N"
     assert "cpf_by_dir" not in slim["cpf"]
     assert "analyzer" not in slim
+
+
+def test_collect_figures_from_results(tmp_path):
+    from aqagent.tools.run_analysis import collect_figures, resolve_figure
+
+    job = tmp_path / "jobs" / "abc123"
+    results = job / "results"
+    results.mkdir(parents=True)
+    (results / "situation_pm25_daily.png").write_bytes(b"png")
+    (results / "seesaw_effect.json").write_text("{}", encoding="utf-8")
+    figs = collect_figures([job])
+    assert figs == [{"job_id": "abc123", "name": "situation_pm25_daily.png"}]
+    assert resolve_figure(tmp_path, "abc123", "situation_pm25_daily.png") is not None
+    assert resolve_figure(tmp_path, "abc123", "../secret.png") is None
+    assert resolve_figure(tmp_path, "..", "situation_pm25_daily.png") is None

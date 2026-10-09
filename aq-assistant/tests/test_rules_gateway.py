@@ -56,3 +56,12 @@ def test_override_skill_flag():
     d = gw.generate(role="chat").decision
     assert d is not None
     assert d.args["analyzers"] == ["blh_coupling"]
+
+
+def test_plot_new_city_runs_situation():
+    gw = AqRulesGateway("给我画一个图，展示北京2026-08-01至2026-08-28的空气质量变化趋势")
+    d = gw.generate(role="chat").decision
+    assert d is not None
+    assert d.name == "run_analysis"
+    assert d.args["city"] == "北京"
+    assert d.args["analyzers"] == ["situation_assessment"]

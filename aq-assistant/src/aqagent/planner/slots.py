@@ -13,6 +13,7 @@ _CITY_RE = re.compile(
 _DATE_RE = re.compile(r"(\d{4})[-\/年](\d{1,2})[-\/月](\d{1,2})?日?")
 _LIST_RE = re.compile(r"分析器|方法清单|有哪些方法|都有哪些|skill\b", re.I)
 _ANALYZE_RE = re.compile(r"分析(?!器)|诊断|污染过程|形势|为什么|怎么管")
+_PLOT_RE = re.compile(r"画图|画一个图|出图|趋势图|变化趋势|折线图|把图")
 _ALL_RE = re.compile(r"全部分析器|所有分析器|全面|完整诊断|该数据")
 _FOLLOW_RE = re.compile(r"那[么]?|刚才|再看|还看|接着|上次|这个结果|同样时段")
 
@@ -37,9 +38,12 @@ def parse_slots(text: str) -> dict:
     start = dates[0] if dates else None
     end = dates[1] if len(dates) >= 2 else (dates[0] if dates else None)
     analyzers = select_analyzers(t)
+    plot = bool(_PLOT_RE.search(t))
     intent = "chat"
     if _LIST_RE.search(t) and not re.search(r"分析该|诊断该|污染过程", t):
         intent = "list"
+    elif plot and not _ANALYZE_RE.search(t):
+        intent = "plot"
     elif _ANALYZE_RE.search(t) or analyzers or is_followup(t):
         intent = "analyze"
     return {
