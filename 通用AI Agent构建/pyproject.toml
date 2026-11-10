@@ -10,6 +10,8 @@ requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn>=0.30",
+    "python-docx>=1.1",
+    "pymupdf>=1.24",
 ]
 
 [project.optional-dependencies]

@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from yxbot.config import PACKAGE_ROOT, load_settings, save_settings
 from yxbot.gateway import DeepSeekGateway, GatewayError
 from yxbot.loop import Agent, AgentError
+from yxbot.sessions import SessionStore
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -34,13 +36,24 @@ class SettingsBody(BaseModel):
     host_ip: str = ""
 
 
+class RenameBody(BaseModel):
+    title: str = ""
+
+
 def create_app(agent: Agent | None = None) -> FastAPI:
     settings = load_settings()
     default_workspace = (PACKAGE_ROOT / "workspace").resolve()
     if settings.workspace.resolve() == default_workspace:
         default_workspace.mkdir(parents=True, exist_ok=True)
         settings.workspace = default_workspace
-    bot = agent or Agent(DeepSeekGateway(settings), settings.workspace)
+    if agent is None:
+        store = SessionStore(PACKAGE_ROOT / "sessions")
+        bot = Agent(DeepSeekGateway(settings), settings.workspace, store)
+        latest = store.latest()
+        if latest:
+            bot._apply(latest)
+    else:
+        bot = agent
     held = {"settings": settings, "agent": bot}
 
     app = FastAPI(title="YXBot", version="0.1.0")
@@ -74,6 +87,29 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return _state()
 
+    def _sse(events):
+        def generate():
+            try:
+                for event in events:
+                    yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
+            except AgentError as exc:
+                payload = {"type": "error", "detail": str(exc)}
+                yield "data: " + json.dumps(payload, ensure_ascii=False) + "\n\n"
+
+        return StreamingResponse(
+            generate(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    @app.post("/api/chat/stream")
+    def chat_stream(body: ChatBody):
+        return _sse(held["agent"].events_for_user(body.message))
+
+    @app.post("/api/confirm/stream")
+    def confirm_stream(body: ConfirmBody):
+        return _sse(held["agent"].events_for_confirm(body.allow))
+
     @app.post("/api/workspace")
     def workspace(body: WorkspaceBody):
         try:
@@ -86,7 +122,31 @@ def create_app(agent: Agent | None = None) -> FastAPI:
 
     @app.post("/api/reset")
     def reset():
-        held["agent"].reset()
+        held["agent"].start_new()
+        return _state()
+
+    @app.post("/api/sessions/{session_id}/open")
+    def open_session(session_id: str):
+        try:
+            held["agent"].open_session(session_id)
+        except AgentError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return _state()
+
+    @app.delete("/api/sessions/{session_id}")
+    def delete_session(session_id: str):
+        try:
+            held["agent"].delete_session(session_id)
+        except AgentError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return _state()
+
+    @app.patch("/api/sessions/{session_id}")
+    def rename_session(session_id: str, body: RenameBody):
+        try:
+            held["agent"].rename(session_id, body.title)
+        except AgentError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
         return _state()
 
     @app.get("/api/settings")

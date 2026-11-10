@@ -29,6 +29,15 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(turn.tool_calls[0].name, "read_file")
         self.assertEqual(turn.tool_calls[0].arguments["path"], "a.txt")
 
+    def test_stream_assembler_collects_deltas(self):
+        from yxbot.gateway import StreamAssembler
+
+        assembler = StreamAssembler()
+        self.assertEqual(assembler.feed_line('data: {"choices":[{"delta":{"content":"你"}}]}'), "你")
+        self.assertEqual(assembler.feed_line('data: {"choices":[{"delta":{"content":"好"}}]}'), "好")
+        self.assertEqual(assembler.feed_line("data: [DONE]"), "")
+        self.assertEqual(assembler.finish().content, "你好")
+
     def test_reads_json_tool_in_content(self):
         turn = parse_response(
             {

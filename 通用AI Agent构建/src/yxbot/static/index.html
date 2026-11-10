@@ -23,7 +23,7 @@
       --shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
     }
     * { box-sizing: border-box; }
-    html, body { height: 100%; }
+    html, body { height: 100%; overflow: hidden; }
     body {
       margin: 0;
       color: var(--ink);
@@ -48,60 +48,85 @@
     button:disabled { opacity: 0.45; cursor: default; }
     .app {
       position: relative;
-      min-height: 100%;
+      height: 100%;
+      min-height: 0;
       display: grid;
-      grid-template-columns: 300px minmax(0, 1fr) 340px;
+      grid-template-columns: 248px minmax(0, 1fr);
       gap: 18px;
       padding: 22px;
     }
-    .rail, .console, .stage {
+    .rail, .stage {
       animation: rise 0.7s ease both;
+      min-height: 0;
     }
     .stage { animation-delay: 0.08s; }
-    .console { animation-delay: 0.16s; }
     @keyframes rise {
       from { opacity: 0; transform: translateY(12px); }
       to { opacity: 1; transform: none; }
     }
-    .rail, .console {
+    .rail {
+      display: flex;
+      flex-direction: column;
+      overflow: auto;
       border: 1px solid var(--line);
       background: rgba(20, 23, 18, 0.78);
       backdrop-filter: blur(8px);
-      border-radius: 22px;
-      padding: 22px 18px;
+      border-radius: 18px;
+      padding: 16px 14px;
+      font-size: 13px;
     }
     .mark {
       margin: 0;
       font-family: Fraunces, "Iowan Old Style", "Palatino Linotype", serif;
-      font-size: 42px;
+      font-size: 26px;
       font-weight: 560;
       letter-spacing: -0.04em;
       line-height: 0.9;
     }
-    .lead { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+    .lead { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
     .clock {
       display: block;
-      margin: 18px 0 22px;
+      margin: 10px 0 12px;
       font-variant-numeric: tabular-nums;
-      letter-spacing: 0.14em;
+      letter-spacing: 0.08em;
       color: var(--copper);
-      font-size: 13px;
+      font-size: 12px;
     }
     label { display: grid; gap: 8px; font-size: 12px; letter-spacing: 0.12em; color: var(--muted); }
     input[type="text"], input[type="password"], textarea {
       width: 100%;
       border: 1px solid var(--line);
       background: rgba(0, 0, 0, 0.22);
-      border-radius: 12px;
-      padding: 11px 12px;
+      border-radius: 10px;
+      padding: 7px 10px;
       outline: none;
     }
     #workspace { font-size: 13px; }
     input:focus, textarea:focus { border-color: rgba(224, 138, 69, 0.8); }
     .stack { display: grid; gap: 10px; margin-top: 14px; }
+    .history {
+      flex: 1;
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+      margin-top: 18px;
+    }
+    .history-label { margin: 0 0 8px; font-size: 12px; letter-spacing: 0.12em; color: var(--muted); }
+    .sessions { display: grid; gap: 6px; overflow: auto; align-content: start; }
+    .session { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; align-items: center; }
+    .session-name {
+      width: 100%;
+      border-radius: 8px;
+      padding: 5px 8px;
+      font-size: 12px;
+    }
+    .session.current .session-name { border-color: var(--copper); }
+    .session-open, button.drop { padding: 5px 8px; border-radius: 8px; font-size: 12px; }
+    button.drop { background: transparent; color: var(--muted); border: 1px solid var(--line); }
     button.solid, button.ghost, button.danger {
       border-radius: 999px;
-      padding: 10px 16px;
+      padding: 6px 12px;
+      font-size: 13px;
       white-space: nowrap;
     }
     button.solid { background: var(--copper); color: #24150c; border: 0; font-weight: 600; }
@@ -110,7 +135,7 @@
     .stage {
       display: flex;
       flex-direction: column;
-      min-height: calc(100vh - 44px);
+      height: 100%;
       background: var(--paper);
       color: var(--paper-ink);
       border-radius: 28px;
@@ -119,21 +144,22 @@
     }
     #log {
       flex: 1;
+      min-height: 0;
       overflow: auto;
       padding: 28px 28px 12px;
       display: flex;
       flex-direction: column;
       gap: 14px;
     }
-    .bubble { white-space: pre-wrap; line-height: 1.65; max-width: 78%; }
+    .bubble { white-space: pre-wrap; line-height: 1.6; max-width: 78%; font-size: 14px; }
     .bubble.user {
       align-self: flex-end;
       background: #1c1914;
       color: var(--paper);
-      border-radius: 18px 18px 4px 18px;
-      padding: 12px 14px;
+      border-radius: 14px 14px 4px 14px;
+      padding: 8px 12px;
     }
-    .bubble.assistant { align-self: flex-start; font-size: 17px; }
+    .bubble.assistant { align-self: flex-start; }
     .bubble.tool {
       align-self: stretch;
       max-width: none;
@@ -163,36 +189,19 @@
     #composer {
       display: grid;
       grid-template-columns: 1fr auto;
+      align-items: end;
       gap: 10px;
-      padding: 16px 18px 18px;
+      padding: 12px 14px 14px;
+      flex-shrink: 0;
     }
+    #send { height: 36px; padding: 0 14px; }
     #message {
       min-height: 74px;
+      max-height: 160px;
       resize: vertical;
       background: #fff;
       color: var(--paper-ink);
       border-color: rgba(28, 25, 20, 0.12);
-    }
-    .console { display: flex; flex-direction: column; min-height: calc(100vh - 44px); }
-    .console h2 {
-      margin: 0 0 12px;
-      font-size: 13px;
-      letter-spacing: 0.18em;
-      font-weight: 600;
-      color: var(--moss);
-    }
-    #terminal {
-      flex: 1;
-      margin: 0;
-      overflow: auto;
-      border-radius: 16px;
-      padding: 14px;
-      background: #070806;
-      color: #d7e7c4;
-      font-family: "Cascadia Code", "Cascadia Mono", Consolas, monospace;
-      font-size: 12.5px;
-      line-height: 1.55;
-      white-space: pre-wrap;
     }
     details { margin-top: 8px; }
     details summary { cursor: pointer; color: var(--muted); letter-spacing: 0.08em; font-size: 13px; }
@@ -212,10 +221,10 @@
       letter-spacing: 0.2em;
     }
     @media (max-width: 1100px) {
-      .app { grid-template-columns: 1fr; }
-      .stage, .console { min-height: auto; }
-      #log { min-height: 360px; }
-      #terminal { min-height: 180px; }
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(280px, 46%) minmax(0, 1fr);
+      }
     }
   </style>
 </head>
@@ -225,12 +234,18 @@
       <h1 class="mark">YXBot</h1>
       <p class="lead">本地对话。写入和命令会先停下来等你点允许。</p>
       <time class="clock" id="clock"></time>
+      <div class="stack">
+        <button class="ghost" id="reset" type="button">新对话</button>
+      </div>
+      <div class="history">
+        <p class="history-label">对话</p>
+        <div id="sessions" class="sessions"></div>
+      </div>
       <label>工作目录
         <input id="workspace" type="text" placeholder="工作目录" />
       </label>
       <div class="stack">
         <button class="solid" id="use-dir" type="button">使用此目录</button>
-        <button class="ghost" id="reset" type="button">清空对话</button>
       </div>
       <details>
         <summary>DeepSeek 连接</summary>
@@ -263,16 +278,11 @@
         <button class="solid" id="send" type="submit">发送</button>
       </form>
     </main>
-    <section class="console">
-      <h2>终端</h2>
-      <pre id="terminal">（还没有命令或文件操作）</pre>
-    </section>
   </div>
   <script>
     const errorBox = document.querySelector("#error");
     const noticeBox = document.querySelector("#notice");
     const log = document.querySelector("#log");
-    const terminal = document.querySelector("#terminal");
     const pending = document.querySelector("#pending");
     const pendingText = document.querySelector("#pending-text");
     const messageBox = document.querySelector("#message");
@@ -304,8 +314,7 @@
         log.appendChild(div);
       });
       log.scrollTop = log.scrollHeight;
-      const lines = state.terminal || [];
-      terminal.textContent = lines.length ? lines.join("\n") : "（还没有命令或文件操作）";
+      renderSessions(state.sessions || [], state.session_id);
       if (state.pending) {
         pending.hidden = false;
         pendingText.textContent = state.pending.text || "";
@@ -328,6 +337,63 @@
         return data;
       } finally {
         if (busy) document.body.classList.remove("busy");
+      }
+    }
+
+    function renderSessions(sessions, currentId) {
+      const box = document.querySelector("#sessions");
+      box.replaceChildren();
+      if (!sessions.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = "还没有保存的对话";
+        box.appendChild(empty);
+        return;
+      }
+      for (const item of sessions) {
+        const row = document.createElement("div");
+        row.className = "session" + (item.id === currentId ? " current" : "");
+        const name = document.createElement("input");
+        name.type = "text";
+        name.className = "session-name";
+        name.value = item.title || "新对话";
+        name.addEventListener("click", (event) => event.stopPropagation());
+        name.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            name.blur();
+          }
+        });
+        name.addEventListener("blur", async () => {
+          const next = name.value.trim();
+          if (next === (item.title || "新对话")) return;
+          const state = await call("/api/sessions/" + encodeURIComponent(item.id), {
+            method: "PATCH",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({title: next})
+          }, true);
+          if (state) render(state);
+        });
+        const open = document.createElement("button");
+        open.type = "button";
+        open.className = "ghost session-open";
+        open.textContent = "打开";
+        open.addEventListener("click", async () => {
+          const state = await call("/api/sessions/" + encodeURIComponent(item.id) + "/open", {method: "POST"}, true);
+          if (state) render(state);
+        });
+        const drop = document.createElement("button");
+        drop.type = "button";
+        drop.className = "drop";
+        drop.textContent = "删除";
+        drop.addEventListener("click", async () => {
+          const title = (item.title || "新对话").trim();
+          if (!window.confirm("删除对话「" + title + "」？删除后不能恢复。")) return;
+          const state = await call("/api/sessions/" + encodeURIComponent(item.id), {method: "DELETE"}, true);
+          if (state) render(state);
+        });
+        row.append(name, open, drop);
+        box.appendChild(row);
       }
     }
 
@@ -354,30 +420,80 @@
       const message = messageBox.value.trim();
       if (!message || document.body.classList.contains("busy")) return;
       messageBox.value = "";
-      const state = await call("/api/chat", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({message})
-      }, true);
-      if (state) render(state);
+      appendBubble("user", message);
+      await streamTurn("/api/chat/stream", {message});
     });
 
     document.querySelector("#allow").addEventListener("click", async () => {
-      const state = await call("/api/confirm", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({allow: true})
-      }, true);
-      if (state) render(state);
+      await streamTurn("/api/confirm/stream", {allow: true});
     });
     document.querySelector("#deny").addEventListener("click", async () => {
-      const state = await call("/api/confirm", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({allow: false})
-      }, true);
-      if (state) render(state);
+      await streamTurn("/api/confirm/stream", {allow: false});
     });
+    function appendBubble(who, text) {
+      const empty = log.querySelector(".empty");
+      if (empty) empty.remove();
+      const div = document.createElement("div");
+      div.className = "bubble " + who + " enter";
+      div.textContent = text || "";
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+      return div;
+    }
+
+    async function streamTurn(url, body) {
+      showError("");
+      document.body.classList.add("busy");
+      let bubble = null;
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(body)
+        });
+        if (!response.ok || !response.body) {
+          const data = await response.json().catch(() => ({}));
+          showError(typeof data.detail === "string" ? data.detail : "请求失败");
+          return;
+        }
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (true) {
+          const step = await reader.read();
+          if (step.done) break;
+          buffer += decoder.decode(step.value, {stream: true});
+          let split = buffer.indexOf("\n\n");
+          while (split >= 0) {
+            const raw = buffer.slice(0, split);
+            buffer = buffer.slice(split + 2);
+            const dataLine = raw.split("\n").filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trim()).join("");
+            if (dataLine) {
+              const event = JSON.parse(dataLine);
+              if (event.type === "delta") {
+                if (!bubble) bubble = appendBubble("assistant", "");
+                bubble.textContent += event.text || "";
+                log.scrollTop = log.scrollHeight;
+              } else if (event.type === "tool") {
+                appendBubble("tool", event.text || "");
+                bubble = null;
+              } else if (event.type === "pending") {
+                bubble = null;
+              } else if (event.type === "error") {
+                showError(event.detail || "请求失败");
+              } else if (event.type === "done" && event.state) {
+                render(event.state);
+                bubble = null;
+              }
+            }
+            split = buffer.indexOf("\n\n");
+          }
+        }
+      } finally {
+        document.body.classList.remove("busy");
+      }
+    }
+
     document.querySelector("#use-dir").addEventListener("click", async () => {
       const state = await call("/api/workspace", {
         method: "POST",
@@ -412,7 +528,7 @@
     });
     document.querySelector("#test-settings").addEventListener("click", async () => {
       const data = await call("/api/test", {method: "POST"}, true);
-      if (data) showNotice("连通正常：" + (data.reply || "ok"));
+      if (data) showNotice("连通正常");
     });
 
     call("/api/settings").then((data) => {
